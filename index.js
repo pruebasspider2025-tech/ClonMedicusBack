@@ -23,9 +23,11 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
       "http://localhost:8080",
+      "https://medicusclon.netlify.app",
       "https://medicussl.netlify.app",
       "https://medicusback.onrender.com",
       "https://mutant-back-reserva.onrender.com",
+      "https://clonmedicusback.onrender.com",
     ];
     
   
