@@ -16,6 +16,7 @@ const citaRoutes = require("./src/routes/citaRoutes");
 const ListaEspecialidad = require("./src/routes/listaespecialidadroutes");
 const ListaPacients = require("./src/routes/listapacientesRoutes");
 const doctorCalendarRoutes = require("./src/routes/DoctorCalendarRoutes");
+const mensajesRoutes = require("./src/routes/mensajesRoutes");
 
 const app = express();
 
@@ -66,7 +67,7 @@ app.use("/api", citaRoutes);
 app.use("/api", ListaEspecialidad);
 app.use("/api", ListaPacients);
 app.use("/api", doctorCalendarRoutes);
-
+app.use("/api/mensajes", mensajesRoutes);
 const startServer = async () => {
   try {
     await connectDB();

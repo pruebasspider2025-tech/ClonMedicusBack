@@ -1,3 +1,4 @@
+// src/services/authservices.js
 const { pool } = require("../../db");
 const bcrypt = require("bcrypt");
 
@@ -27,18 +28,13 @@ const login = async (username, password) => {
     }
 
     // Verificar si la contraseña está hasheada
-    const isHashed = user.contrasenia.startsWith('$2b$');
-    
+    const isHashed = user.contrasenia.startsWith("$2b$");
     let passwordMatch = false;
-    
+
     if (isHashed) {
-      // Comparar con bcrypt para contraseñas hasheadas
       passwordMatch = await bcrypt.compare(password, user.contrasenia);
     } else {
-      // Comparación directa para migración (eliminar después)
       passwordMatch = password === user.contrasenia;
-      
-      // Si coincide y no está hasheada, actualizar a hash
       if (passwordMatch) {
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query(
@@ -53,7 +49,6 @@ const login = async (username, password) => {
       throw new Error("Contraseña incorrecta");
     }
 
-    // Eliminar la contraseña del objeto de usuario antes de devolverlo
     const { contrasenia, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
@@ -61,7 +56,6 @@ const login = async (username, password) => {
   }
 };
 
-// Función para crear usuario con contraseña hasheada
 const createUser = async (userData) => {
   const {
     nombre_completo,
@@ -70,7 +64,7 @@ const createUser = async (userData) => {
     usuario,
     contrasenia,
     rol,
-    estado = 1
+    estado = 1,
   } = userData;
 
   const hashedPassword = await bcrypt.hash(contrasenia, 10);
@@ -89,7 +83,7 @@ const createUser = async (userData) => {
     usuario,
     hashedPassword,
     rol,
-    estado
+    estado,
   ];
 
   try {
@@ -100,18 +94,17 @@ const createUser = async (userData) => {
   }
 };
 
-// Función para actualizar contraseña
 const updatePassword = async (userId, newPassword) => {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  
+
   const query = `
     UPDATE usuarios 
     SET contrasenia = $1 
     WHERE idusuario = $2
   `;
-  
+
   const values = [hashedPassword, userId];
-  
+
   try {
     await pool.query(query, values);
     return true;
@@ -120,8 +113,23 @@ const updatePassword = async (userId, newPassword) => {
   }
 };
 
-module.exports = { 
-  login, 
-  createUser, 
-  updatePassword 
+// ─────────────────────────────────────────────
+// NUEVO: marcar en línea / desconectar
+// ─────────────────────────────────────────────
+const setEnLinea = async (userId, enLinea) => {
+  const query = `
+    UPDATE usuarios
+    SET en_linea = $1
+    WHERE idusuario = $2
+    RETURNING idusuario, en_linea
+  `;
+  const result = await pool.query(query, [enLinea, userId]);
+  return result.rows[0];
+};
+
+module.exports = {
+  login,
+  createUser,
+  updatePassword,
+  setEnLinea,
 };
