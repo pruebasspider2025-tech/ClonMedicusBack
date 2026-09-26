@@ -11,6 +11,20 @@ const CitaController = {
     }
   },
 
+  // ✅ NUEVO: obtener paciente por ID
+  getPacienteById: async (req, res) => {
+    try {
+      const { idpaciente } = req.params;
+      const paciente = await CitaService.getPacienteById(idpaciente);
+      if (!paciente) {
+        return res.status(404).json({ message: "Paciente no encontrado" });
+      }
+      res.json(paciente);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
   getServicios: async (req, res) => {
     try {
       const servicios = await CitaService.getServicios();

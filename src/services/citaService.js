@@ -3,16 +3,28 @@ const { pool } = require("../../db");
 const CitaService = {
   getPacientes: async (searchTerm = "") => {
     const query = `
-    SELECT * FROM pacientes 
-    WHERE estado = 0 
-    AND (
-      nombre_completo ILIKE $1 OR 
-      ci ILIKE $1
-    )
-    LIMIT 5
-  `;
+      SELECT * FROM pacientes 
+      WHERE estado = 0 
+      AND (
+        nombre_completo ILIKE $1 OR 
+        ci ILIKE $1
+      )
+      ORDER BY nombre_completo ASC
+      LIMIT 20
+    `;
     const { rows } = await pool.query(query, [`%${searchTerm}%`]);
     return rows;
+  },
+
+  // ✅ NUEVO: obtener un paciente por ID directamente
+  getPacienteById: async (idpaciente) => {
+    const query = `
+      SELECT * FROM pacientes 
+      WHERE idpaciente = $1 AND estado = 0
+      LIMIT 1
+    `;
+    const { rows } = await pool.query(query, [idpaciente]);
+    return rows[0] || null;
   },
 
   getServicios: async () => {
@@ -23,20 +35,15 @@ const CitaService = {
 
   getDoctoresByServicio: async (idservicio) => {
     const query = `
-     SELECT 
-    u.idusuario, 
-    u.nombre_completo, 
-    e.nombre AS especialidad 
-FROM 
-    usuarios u
-INNER JOIN 
-    doctor_especialidad de ON u.idusuario = de.iddoctor
-INNER JOIN 
-    especialidades e ON de.idespecialidad = e.idespecialidad
-INNER JOIN 
-    servicios s ON e.idespecialidad = s.idespecialidad
-WHERE 
-    s.idservicio = $1
+      SELECT 
+        u.idusuario, 
+        u.nombre_completo, 
+        e.nombre AS especialidad 
+      FROM usuarios u
+      INNER JOIN doctor_especialidad de ON u.idusuario = de.iddoctor
+      INNER JOIN especialidades e ON de.idespecialidad = e.idespecialidad
+      INNER JOIN servicios s ON e.idespecialidad = s.idespecialidad
+      WHERE s.idservicio = $1
     `;
     const { rows } = await pool.query(query, [idservicio]);
     return rows;
@@ -106,9 +113,9 @@ WHERE
     const nuevaCita = rows[0];
 
     const queryServicio = `
-        INSERT INTO cita_servicio (idcita, idservicio) 
-        VALUES ($1, $2)
-      `;
+      INSERT INTO cita_servicio (idcita, idservicio) 
+      VALUES ($1, $2)
+    `;
     await pool.query(queryServicio, [nuevaCita.idcita, idservicio]);
 
     return nuevaCita;
