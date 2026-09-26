@@ -7,11 +7,11 @@ const CitaController = {
       const pacientes = await CitaService.getPacientes(searchTerm);
       res.json(pacientes);
     } catch (error) {
+      console.error("❌ getPacientes:", error);
       res.status(500).json({ message: error.message });
     }
   },
 
-  // ✅ NUEVO: obtener paciente por ID
   getPacienteById: async (req, res) => {
     try {
       const { idpaciente } = req.params;
@@ -21,6 +21,7 @@ const CitaController = {
       }
       res.json(paciente);
     } catch (error) {
+      console.error("❌ getPacienteById:", error);
       res.status(500).json({ message: error.message });
     }
   },
@@ -30,6 +31,7 @@ const CitaController = {
       const servicios = await CitaService.getServicios();
       res.json(servicios);
     } catch (error) {
+      console.error("❌ getServicios:", error);
       res.status(500).json({ message: error.message });
     }
   },
@@ -40,6 +42,7 @@ const CitaController = {
       const doctores = await CitaService.getDoctoresByServicio(idservicio);
       res.json(doctores);
     } catch (error) {
+      console.error("❌ getDoctoresByServicio:", error);
       res.status(500).json({ message: error.message });
     }
   },
@@ -53,6 +56,7 @@ const CitaController = {
       );
       res.json(horariosDisponibles);
     } catch (error) {
+      console.error("❌ getHorariosDisponibles:", error);
       res.status(500).json({ message: error.message });
     }
   },
@@ -67,15 +71,35 @@ const CitaController = {
       );
       res.json({ existe });
     } catch (error) {
+      console.error("❌ verificarCitaExistente:", error);
       res.status(500).json({ message: error.message });
     }
   },
 
   agendarCita: async (req, res) => {
     try {
+      console.log("📥 Body recibido en agendarCita:", req.body);
+
+      const { idpaciente, iddoctor, idservicio, fecha, hora } = req.body;
+
+      // Validación explícita para devolver 400 con mensaje claro
+      const faltantes = [];
+      if (!idpaciente) faltantes.push("idpaciente");
+      if (!iddoctor) faltantes.push("iddoctor");
+      if (!idservicio) faltantes.push("idservicio");
+      if (!fecha) faltantes.push("fecha");
+      if (!hora) faltantes.push("hora");
+
+      if (faltantes.length > 0) {
+        return res.status(400).json({
+          message: `Faltan campos obligatorios: ${faltantes.join(", ")}`,
+        });
+      }
+
       const nuevaCita = await CitaService.agendarCita(req.body);
       res.status(201).json(nuevaCita);
     } catch (error) {
+      console.error("❌ agendarCita:", error);
       res.status(400).json({ message: error.message });
     }
   },
@@ -89,6 +113,7 @@ const CitaController = {
       );
       res.status(201).json(result);
     } catch (error) {
+      console.error("❌ insertPacienteDoctor:", error);
       res.status(500).json({ message: error.message });
     }
   },

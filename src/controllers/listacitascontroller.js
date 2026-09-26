@@ -17,7 +17,7 @@ const getCitasHistorial = async (req, res) => {
       fechaInicio,
       fechaFin,
       servicios,
-      tipoReporte || 'todos',
+      tipoReporte || "todos",
       estados
     );
     res.json(citas);
@@ -52,15 +52,14 @@ const updateEstadoCita = async (req, res) => {
 
 const deleteCita = async (req, res) => {
   const { id } = req.params;
-  const { motivo } = req.body; // Solo para visual, no se guarda
+  const { motivo } = req.body;
 
   try {
-    // Solo actualizamos el estado a cancelado, no eliminamos físicamente
     const citaCancelada = await listacitasService.deleteCita(id);
-    res.json({ 
+    res.json({
       message: "Cita cancelada correctamente",
       motivo: motivo || "Sin motivo especificado",
-      cita: citaCancelada
+      cita: citaCancelada,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -79,6 +78,28 @@ const procesarPago = async (req, res) => {
   }
 };
 
+/**
+ * Reordena las citas del día.
+ * Body esperado:
+ *   { orden: [{ idcita: 1, numeroLlegada: 1 }, { idcita: 2, numeroLlegada: 2 }, ...] }
+ */
+const reordenarCitas = async (req, res) => {
+  const { orden } = req.body;
+
+  try {
+    if (!Array.isArray(orden)) {
+      return res
+        .status(400)
+        .json({ error: "El campo 'orden' debe ser un array" });
+    }
+
+    const resultado = await listacitasService.reordenarCitas(orden);
+    res.json({ message: "Orden actualizado correctamente", orden: resultado });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   getCitas,
   getCitasHistorial,
@@ -86,4 +107,5 @@ module.exports = {
   updateEstadoCita,
   deleteCita,
   procesarPago,
+  reordenarCitas,
 };
