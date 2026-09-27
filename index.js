@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const { createServer } = require("http");
 const { connectDB } = require("./db");
+const { initSocket } = require("./src/socket");
+
 const authRoutes = require("./src/routes/authRoutes");
 const gestionUsuariosRoutes = require("./src/routes/gestionUsuariosRoutes");
 const pacientesDiaRoutes = require("./src/routes/pacientesDiaRoutes");
@@ -19,6 +22,7 @@ const doctorCalendarRoutes = require("./src/routes/DoctorCalendarRoutes");
 const mensajesRoutes = require("./src/routes/mensajesRoutes");
 
 const app = express();
+const server = createServer(app);
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -30,26 +34,28 @@ const corsOptions = {
       "https://mutant-back-reserva.onrender.com",
       "https://clonmedicusback.onrender.com",
     ];
-    
-  
+
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // para manejar preflight OPTIONS
+app.options("*", cors(corsOptions));
 
-app.use(express.json()); // Para parsear JSON en solicitudes
+app.use(express.json());
+
+// Inicializar WebSocket DESPUÉS de crear el server HTTP
+initSocket(server);
 
 // Rutas
 app.use("/api/auth", authRoutes);
@@ -68,11 +74,12 @@ app.use("/api", ListaEspecialidad);
 app.use("/api", ListaPacients);
 app.use("/api", doctorCalendarRoutes);
 app.use("/api/mensajes", mensajesRoutes);
+
 const startServer = async () => {
   try {
     await connectDB();
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);
     });
   } catch (error) {
