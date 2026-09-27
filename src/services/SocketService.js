@@ -6,9 +6,6 @@ class SocketService {
   // EVENTOS DE CLÍNICA
   // ============================================
 
-  /**
-   * Notifica creación de una nueva cita
-   */
   static notifyNuevaCita(citaData, userInfo) {
     emitEvent('nueva-cita', {
       ...citaData,
@@ -17,9 +14,6 @@ class SocketService {
     });
   }
 
-  /**
-   * Notifica actualización del estado de una cita
-   */
   static notifyCitaEstadoActualizado(data, userInfo) {
     emitEvent('cita-estado-actualizado', {
       ...data,
@@ -28,9 +22,6 @@ class SocketService {
     });
   }
 
-  /**
-   * Notifica cancelación de una cita
-   */
   static notifyCitaCancelada(data, userInfo) {
     emitEvent('cita-cancelada', {
       ...data,
@@ -39,9 +30,6 @@ class SocketService {
     });
   }
 
-  /**
-   * Notifica reordenamiento de citas
-   */
   static notifyCitasReordenadas(data, userInfo) {
     emitEvent('citas-reordenadas', {
       ...data,
@@ -50,9 +38,6 @@ class SocketService {
     });
   }
 
-  /**
-   * Notifica pago procesado
-   */
   static notifyPagoProcesado(data, userInfo) {
     emitEvent('pago-procesado', {
       ...data,
@@ -62,7 +47,35 @@ class SocketService {
   }
 
   // ============================================
-  // EVENTOS GENÉRICOS (compatibilidad)
+  // EVENTOS DE MENSAJES
+  // ============================================
+
+  /**
+   * Notifica al DESTINATARIO que recibió un mensaje nuevo.
+   * @param {object} data - { mensaje, emisorId, receptorId, conversacionId }
+   * @param {number} receptorId - a quién le llega
+   */
+  static notifyNuevoMensaje(data, receptorId) {
+    if (!receptorId) return;
+    emitEvent('nuevo-mensaje', {
+      ...data,
+      timestamp: new Date().toISOString(),
+    }, { userId: receptorId });
+  }
+
+  /**
+   * Notifica al EMISOR que sus mensajes fueron leídos por el contacto.
+   */
+  static notifyMensajesLeidos(data, emisorId) {
+    if (!emisorId) return;
+    emitEvent('mensajes-leidos', {
+      ...data,
+      timestamp: new Date().toISOString(),
+    }, { userId: emisorId });
+  }
+
+  // ============================================
+  // EVENTOS GENÉRICOS
   // ============================================
 
   static notifyClientUpdate(clientData, userInfo) {
@@ -93,9 +106,6 @@ class SocketService {
     });
   }
 
-  /**
-   * Notifica actualización general (para refrescar dashboards)
-   */
   static notifyRefresh(module, userInfo) {
     emitEvent('refresh', {
       module,

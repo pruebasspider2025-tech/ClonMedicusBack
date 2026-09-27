@@ -3,10 +3,6 @@ const { Server } = require('socket.io');
 
 let io = null;
 
-/**
- * Inicializa el servidor WebSocket
- * @param {http.Server} server - Servidor HTTP de Express
- */
 const initSocket = (server) => {
   if (io) return io;
 
@@ -34,19 +30,24 @@ const initSocket = (server) => {
     transports: ['websocket', 'polling'],
   });
 
-  // Middleware de autenticación (opcional pero recomendado)
+  // Middleware de autenticación
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
       return next(new Error('Token no proporcionado'));
     }
-    // Aquí podrías validar el JWT si quieres
     socket.userId = socket.handshake.auth.userId;
     next();
   });
 
   io.on('connection', (socket) => {
-    console.log(`🔌 Cliente conectado: ${socket.id}`);
+    console.log(`🔌 Cliente conectado: ${socket.id} (user: ${socket.userId})`);
+
+    // ✅ Cada usuario se une a su propio room
+    if (socket.userId) {
+      socket.join(`user_${socket.userId}`);
+      console.log(`   → unido al room user_${socket.userId}`);
+    }
 
     socket.on('disconnect', () => {
       console.log(`🔌 Cliente desconectado: ${socket.id}`);
@@ -65,14 +66,23 @@ const getIO = () => {
 };
 
 /**
- * Emite un evento a TODOS los clientes conectados.
- * (En esta clínica no hay multi-negocio/multi-tienda, así que es broadcast global)
+ * Emite un evento.
+ * - Sin opciones → broadcast global
+ * - Con { userId } → solo al room del usuario
  */
-const emitEvent = (event, data) => {
+const emitEvent = (event, data, options = {}) => {
   try {
     const socketIO = getIO();
-    socketIO.emit(event, data);
-    console.log(`📡 Evento emitido: ${event}`);
+
+    if (options.userId) {
+      // Solo al usuario específico
+      socketIO.to(`user_${options.userId}`).emit(event, data);
+      console.log(`📡 Evento "${event}" → user_${options.userId}`);
+    } else {
+      // Broadcast global
+      socketIO.emit(event, data);
+      console.log(`📡 Evento "${event}" → broadcast`);
+    }
   } catch (error) {
     console.error('Error emitiendo evento WebSocket:', error);
   }

@@ -1,9 +1,9 @@
 // src/controllers/mensajescontroller.js
 const service = require("../services/mensajesservice");
+const SocketService = require("../services/SocketService");
 
 /**
  * Helper local para obtener el id del usuario autenticado.
- * Soporta varios nombres por si el token trae `id` o `idusuario`.
  */
 const getUserId = (req) => {
   const id = req.user?.id ?? req.user?.idusuario ?? null;
@@ -57,6 +57,18 @@ const enviarMensajeController = async (req, res) => {
       otroUserId,
       texto.trim()
     );
+
+    // 🔌 WebSocket: notificar al receptor
+    SocketService.notifyNuevoMensaje(
+      {
+        mensaje,
+        emisorId: userId,
+        receptorId: otroUserId,
+        conversacionId: mensaje.conversacionId,
+      },
+      otroUserId
+    );
+
     res.status(201).json(mensaje);
   } catch (error) {
     console.error("Error enviarMensaje:", error);
@@ -71,7 +83,18 @@ const marcarLeidosController = async (req, res) => {
     if (!otroUserId) {
       return res.status(400).json({ message: "contactoId inválido" });
     }
+
     await service.marcarComoLeidos(userId, otroUserId);
+
+    // 🔌 WebSocket: notificar al OTRO usuario (el que escribió) que ya fue leído
+    SocketService.notifyMensajesLeidos(
+      {
+        leidosPor: userId,
+        contactoId: otroUserId,
+      },
+      otroUserId // ← a quién se le notifica (el que escribió los mensajes)
+    );
+
     res.json({ message: "Mensajes marcados como leídos" });
   } catch (error) {
     console.error("Error marcarLeidos:", error);
