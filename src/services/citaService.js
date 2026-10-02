@@ -207,15 +207,19 @@ const CitaService = {
     const { rows } = await pool.query(query, [idpaciente, iddoctor]);
     return rows[0];
   },
-   getDoctoresByEspecialidad: async (req, res) => {
-    try {
-      const { idespecialidad } = req.params;
-      const doctores = await CitaService.getDoctoresByEspecialidad(idespecialidad);
-      res.json(doctores);
-    } catch (error) {
-      console.error("❌ getDoctoresByEspecialidad:", error);
-      res.status(500).json({ message: error.message });
-    }
+   getDoctoresByEspecialidad: async (idespecialidad) => {
+    const query = `
+      SELECT 
+        u.idusuario, 
+        u.nombre_completo, 
+        e.nombre AS especialidad 
+      FROM usuarios u
+      INNER JOIN doctor_especialidad de ON u.idusuario = de.iddoctor
+      INNER JOIN especialidades e ON de.idespecialidad = e.idespecialidad
+      WHERE de.idespecialidad = $1
+    `;
+    const { rows } = await pool.query(query, [idespecialidad]);
+    return rows;
   },
 };
 module.exports = CitaService;
