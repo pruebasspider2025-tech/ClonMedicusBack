@@ -190,7 +190,7 @@ const CitaService = {
       await client.query("ROLLBACK");
       console.error("❌ Error en transacción agendarCita:", err);
       throw err;
-    } finally {
+    } finally { 
       client.release();
     }
   },
@@ -207,6 +207,15 @@ const CitaService = {
     const { rows } = await pool.query(query, [idpaciente, iddoctor]);
     return rows[0];
   },
+   getDoctoresByEspecialidad: async (req, res) => {
+    try {
+      const { idespecialidad } = req.params;
+      const doctores = await CitaService.getDoctoresByEspecialidad(idespecialidad);
+      res.json(doctores);
+    } catch (error) {
+      console.error("❌ getDoctoresByEspecialidad:", error);
+      res.status(500).json({ message: error.message });
+    }
+  },
 };
-
 module.exports = CitaService;

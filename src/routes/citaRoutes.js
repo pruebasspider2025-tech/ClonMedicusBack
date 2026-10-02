@@ -9,16 +9,26 @@ router.get("/pacientesagendarcita", CitaController.getPacientes);
 router.get("/pacienteagendarcita/:idpaciente", CitaController.getPacienteById);
 
 router.get("/serviciosagendarcita", CitaController.getServicios);
+
 router.get(
   "/doctoresagendarcita/servicio/:idservicio",
   CitaController.getDoctoresByServicio
 );
+
+// ✅ NUEVO: doctores por especialidad
+router.get(
+  "/doctoresagendarcita/especialidad/:idespecialidad",
+  CitaController.getDoctoresByEspecialidad
+);
+
 router.get(
   "/horariosdisponibles/:iddoctor/:fecha",
   CitaController.getHorariosDisponibles
 );
+
 router.post("/citasagendarcita", CitaController.agendarCita);
 router.post("/paciente_doctor", CitaController.insertPacienteDoctor);
+
 router.get(
   "/verificar-cita-existente/:idpaciente/:iddoctor/:fecha",
   CitaController.verificarCitaExistente

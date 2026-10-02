@@ -116,6 +116,16 @@ const CitaController = {
       console.error("❌ insertPacienteDoctor:", error);
       res.status(500).json({ message: error.message });
     }
+  }, 
+    getDoctoresByEspecialidad: async (req, res) => {
+    try {
+      const { idespecialidad } = req.params;
+      const doctores = await CitaService.getDoctoresByEspecialidad(idespecialidad);
+      res.json(doctores);
+    } catch (error) {
+      console.error("❌ getDoctoresByEspecialidad:", error);
+      res.status(500).json({ message: error.message });
+    }
   },
 };
 
