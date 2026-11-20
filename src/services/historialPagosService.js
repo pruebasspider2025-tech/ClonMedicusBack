@@ -2,64 +2,46 @@ const { pool } = require("../../db");
 
 module.exports = {
   getHistorialPagos: async (filtros) => {
-    const { busqueda, fechaInicio, fechaFin, iddoctor } = filtros;
-    let query = `
-            SELECT 
-                p.idpago,
-                pa.nombre_completo AS paciente,
-                u.nombre_completo AS doctor,
-                p.fecha,
-                array_agg(s.nombre) AS concepto,
-                p.monto,
-                p.metodo_pago
-            FROM pagos p
-            INNER JOIN citas c ON p.idcita = c.idcita
-            INNER JOIN pacientes pa ON c.idpaciente = pa.idpaciente
-            INNER JOIN cita_servicio cs ON c.idcita = cs.idcita
-	          INNER JOIN servicios s ON cs.idservicio = s.idservicio
-            INNER JOIN usuarios u ON c.iddoctor = u.idusuario
-            WHERE 1=1 AND p.estado = 1
-        `;
+    const { busqueda, fechaInicio, fechaFin, iddoctor, pagina = 1, exportar = false } = filtros;
     const values = [];
-
+    let where = "WHERE p.estado = 1";
     if (busqueda) {
-      query += ` AND (pa.nombre_completo ILIKE $${
-        values.length + 1
-      } OR s.nombre ILIKE $${values.length + 1})`;
       values.push(`%${busqueda}%`);
+      const param = `$${values.length}`;
+      where += ` AND (pa.nombre_completo ILIKE ${param} OR u.nombre_completo ILIKE ${param} OR p.monto::text ILIKE ${param} OR EXISTS (SELECT 1 FROM cita_servicio cs JOIN servicios s ON s.idservicio = cs.idservicio WHERE cs.idcita = c.idcita AND s.nombre ILIKE ${param}))`;
     }
-
-    if (iddoctor) {
-      query += ` AND c.iddoctor = $${values.length + 1}`;
-      values.push(iddoctor);
-    }
-
-    if (fechaInicio) {
-      query += ` AND p.fecha >= $${values.length + 1}`;
-      values.push(fechaInicio);
-    }
-
-    if (fechaFin) {
-      const fechaFinAjustada = new Date(fechaFin);
-      fechaFinAjustada.setDate(fechaFinAjustada.getDate() + 1);
-      query += ` AND p.fecha < $${values.length + 1}`;
-      values.push(fechaFinAjustada.toISOString().split("T")[0]);
-    }
-
-    query += `GROUP BY p.idpago, pa.nombre_completo, u.nombre_completo, p.fecha, p.monto, p.metodo_pago ORDER BY p.fecha DESC`;
-
-    const { rows } = await pool.query(query, values);
-    return rows;
+    if (iddoctor) { values.push(iddoctor); where += ` AND c.iddoctor = $${values.length}`; }
+    if (fechaInicio) { values.push(fechaInicio); where += ` AND p.fecha >= $${values.length}::date`; }
+    if (fechaFin) { values.push(fechaFin); where += ` AND p.fecha < ($${values.length}::date + INTERVAL '1 day')`; }
+    const base = `FROM pagos p
+      JOIN citas c ON c.idcita = p.idcita
+      JOIN pacientes pa ON pa.idpaciente = c.idpaciente
+      JOIN usuarios u ON u.idusuario = c.iddoctor
+      ${where}`;
+    const detalle = `SELECT p.idpago, pa.nombre_completo AS paciente,
+      u.nombre_completo AS doctor, p.fecha,
+      ARRAY(SELECT s.nombre FROM cita_servicio cs JOIN servicios s ON s.idservicio = cs.idservicio WHERE cs.idcita = c.idcita ORDER BY s.idservicio) AS concepto,
+      p.monto, p.metodo_pago ${base} ORDER BY p.fecha DESC, p.idpago DESC`;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const { rows: [totales] } = await client.query(`SELECT COUNT(*) AS total,
+        COALESCE(SUM(p.monto), 0) AS recaudado,
+        COALESCE(SUM(p.monto) FILTER (WHERE LOWER(TRIM(p.metodo_pago)) = 'efectivo'), 0) AS efectivo,
+        COALESCE(SUM(p.monto) FILTER (WHERE LOWER(TRIM(p.metodo_pago)) = 'qr'), 0) AS qr ${base}`, values);
+      const total = Number(totales.total);
+      const totalPaginas = Math.max(1, Math.ceil(total / 30));
+      const paginaActual = Math.min(pagina, totalPaginas);
+      const { rows: pagos } = await client.query(exportar ? detalle : `${detalle} LIMIT 30 OFFSET $${values.length + 1}`, exportar ? values : [...values, (paginaActual - 1) * 30]);
+      await client.query("COMMIT");
+      return { pagos, total, pagina: paginaActual, totalPaginas, totales: { recaudado: totales.recaudado, efectivo: totales.efectivo, qr: totales.qr } };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally { client.release(); }
   },
-
   getDoctores: async () => {
-    const query = `
-      SELECT idusuario, nombre_completo 
-      FROM usuarios 
-      WHERE rol = 1 AND estado = 1
-      ORDER BY nombre_completo ASC
-    `;
-    const { rows } = await pool.query(query);
+    const { rows } = await pool.query(`SELECT idusuario, nombre_completo FROM usuarios WHERE rol = 1 AND estado = 1 ORDER BY nombre_completo ASC`);
     return rows;
   },
 };
